@@ -15,10 +15,11 @@ BLACK = (0,0,0)
 RED = (255,0,0)
 
 FPS = 120
-VELOCITY= 50
+X_VELOCITY = 500
+Y_VELOCITY = 100
 BALL_RADIUS = 40
-BACKGROUND_COLOR= BLACK
-x, y = 0, 1
+BACKGROUND_COLOR = BLACK
+UP_KEY_DELAY = 500
 
 # Pymunk setup
 space = pymunk.Space()
@@ -58,15 +59,23 @@ def create_ball(position):
 
 ball = create_ball((500, 500))
 
+last_up_press_time = 0
 def handle_ball_movement(keys_pressed, ball_body):
+    global last_up_press_time
+    
+    current_time = pygame.time.get_ticks()
     if keys_pressed[pygame.K_LEFT]:
-            ball_body.apply_impulse_at_local_point((-VELOCITY, 0))
+        ball_body.apply_impulse_at_local_point((-Y_VELOCITY, 0))
     if keys_pressed[pygame.K_RIGHT]:
-            ball_body.apply_impulse_at_local_point((VELOCITY, 0))
+        ball_body.apply_impulse_at_local_point((Y_VELOCITY, 0))
+    if keys_pressed[pygame.K_DOWN]:
+        ball_body.apply_impulse_at_local_point((0, Y_VELOCITY))
+    
+    # Handle UP key with delay
     if keys_pressed[pygame.K_UP]:
-            ball_body.apply_impulse_at_local_point((0, -VELOCITY))
-    if keys_pressed[pygame.K_ESCAPE]:
-            ball_body.apply_impulse_at_local_point((0, VELOCITY))
+        if current_time - last_up_press_time > UP_KEY_DELAY:
+            ball_body.apply_impulse_at_local_point((0, -X_VELOCITY))
+            last_up_press_time = current_time
 
 def draw_window(ball):
     SCREEN.fill(BACKGROUND_COLOR)
@@ -91,13 +100,12 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     run = False
                 elif event.key == pygame.K_r and game_state == "game_over":
-                    # Reset game state
                     ball.body.position = (500, 500)
                     game_state = "game"
                 elif event.key == pygame.K_q and game_state == "game_over":
                     run = False
                 elif event.key == pygame.K_UP and game_state == "start_menu":
-                    game_state = "game"  # Change game state to "game" when UP key is pressed
+                    game_state = "game"
         
         if game_state == "start_menu":
             draw_start_menu()
