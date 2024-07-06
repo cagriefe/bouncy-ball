@@ -10,20 +10,23 @@ SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Bouncy Ball")
 clock = pygame.time.Clock()
 
-WHITE = (255,255,255)
-BLACK = (0,0,0)
-RED = (255,0,0)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
 
 FPS = 120
-X_VELOCITY = 500
 Y_VELOCITY = 100
+UP_VELOCITY = 600
+DOWN_VELOCITY = 50
 BALL_RADIUS = 40
 BACKGROUND_COLOR = BLACK
-UP_KEY_DELAY = 500
+UP_KEY_DELAY = 400
 
-# Pymunk setup
 space = pymunk.Space()
 space.gravity = (0, 900)
+
+score = 0
+font = pygame.font.SysFont('Arial', 30)
 
 def draw_start_menu():
     SCREEN.fill(BLACK)
@@ -60,8 +63,9 @@ def create_ball(position):
 ball = create_ball((500, 500))
 
 last_up_press_time = 0
+
 def handle_ball_movement(keys_pressed, ball_body):
-    global last_up_press_time
+    global last_up_press_time, score
     
     current_time = pygame.time.get_ticks()
     if keys_pressed[pygame.K_LEFT]:
@@ -69,19 +73,24 @@ def handle_ball_movement(keys_pressed, ball_body):
     if keys_pressed[pygame.K_RIGHT]:
         ball_body.apply_impulse_at_local_point((Y_VELOCITY, 0))
     if keys_pressed[pygame.K_DOWN]:
-        ball_body.apply_impulse_at_local_point((0, Y_VELOCITY))
+        ball_body.apply_impulse_at_local_point((0, DOWN_VELOCITY))
     
-    # Handle UP key with delay
     if keys_pressed[pygame.K_UP]:
         if current_time - last_up_press_time > UP_KEY_DELAY:
-            ball_body.apply_impulse_at_local_point((0, -X_VELOCITY))
+            ball_body.apply_impulse_at_local_point((0, -UP_VELOCITY))
             last_up_press_time = current_time
+            score += 1
 
 def draw_window(ball):
     SCREEN.fill(BACKGROUND_COLOR)
     pygame.draw.circle(SCREEN, RED, (int(ball.body.position.x), int(ball.body.position.y)), BALL_RADIUS)
+    draw_score()
     pygame.display.update()
-    
+
+def draw_score():
+    score_text = font.render(f'Score: {score}', True, WHITE)
+    SCREEN.blit(score_text, (10, 10))
+
 def check_boundaries(ball):
     pos = ball.body.position
     if pos.x < BALL_RADIUS or pos.x > WIDTH - BALL_RADIUS or pos.y < BALL_RADIUS or pos.y > HEIGHT - BALL_RADIUS:
@@ -89,6 +98,7 @@ def check_boundaries(ball):
     return False
 
 def main():
+    global score
     run = True
     game_state = "start_menu"
     while run:
@@ -102,6 +112,7 @@ def main():
                 elif event.key == pygame.K_r and game_state == "game_over":
                     ball.body.position = (500, 500)
                     game_state = "game"
+                    score = 0
                 elif event.key == pygame.K_q and game_state == "game_over":
                     run = False
                 elif event.key == pygame.K_UP and game_state == "start_menu":
