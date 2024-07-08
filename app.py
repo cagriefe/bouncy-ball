@@ -29,7 +29,7 @@ score = 0
 font = pygame.font.SysFont('Arial', 30)
 menu_font = pygame.font.SysFont('Arial', 40)
 
-title_text = menu_font.render('My Game', True, WHITE)
+title_text = menu_font.render('Bouncy Ball', True, WHITE)
 start_button_text = menu_font.render('Press UP to Start', True, WHITE)
 game_over_text = menu_font.render('Game Over', True, WHITE)
 restart_button_text = menu_font.render('R - Restart', True, WHITE)
@@ -58,6 +58,7 @@ def create_ball(position):
     shape = pymunk.Circle(body, radius)
     shape.elasticity = 1
     shape.friction = 1
+    shape.collision_type = 1
     space.add(body, shape)
     return shape
 
@@ -67,19 +68,39 @@ def create_platform(position, size):
     shape = pymunk.Poly.create_box(body, size)
     shape.elasticity = 1
     shape.friction = 1
+    shape.collision_type = 2
     space.add(body, shape)
     return {'body': body, 'size': size, 'initial_position': position}
 
 ball = create_ball((500, 500))
 platforms = [
-    create_platform((150, 500), (300, 20)),
-    create_platform((850, 300), (300, 20)),
+    #create_platform((850, 0), (300, 20)),
+    create_platform((150, 150), (300, 20)),
+    create_platform((850, 400), (300, 20)),
+    create_platform((150, 600), (300, 20)),
+    create_platform((850, 900), (300, 20)),
+#    create_platform((150, 1000), (300, 20))
 ]
+
 
 last_up_press_time = 0
 
+def handle_collision(arbiter, space, data):
+    global score
+    ball_shape, platform_shape = arbiter.shapes
+    
+    if ball_shape.collision_type == 1 and platform_shape.collision_type == 2:
+        score += 1
+#        print(f"Score: {score}")
+    
+    return True
+
+collision_handler = space.add_collision_handler(1, 2)
+collision_handler.data["scored"] = False
+collision_handler.pre_solve = handle_collision
+
 def handle_ball_movement(keys_pressed, ball_body):
-    global last_up_press_time, score
+    global last_up_press_time
 
     current_time = pygame.time.get_ticks()
     if keys_pressed[pygame.K_LEFT]:
@@ -93,23 +114,50 @@ def handle_ball_movement(keys_pressed, ball_body):
         if current_time - last_up_press_time > UP_KEY_DELAY:
             ball_body.apply_impulse_at_local_point((0, -UP_VELOCITY))
             last_up_press_time = current_time
-            score += 1
-            
-def handle_platform_movement(platforms):
-    for platform in platforms:
-        platform['body'].velocity = (0, PLATFORM_VELOCITY)
-        if platform['body'].position.y > HEIGHT:
-            platform['body'].position = platform['initial_position']
 
+def handle_platform_movement(platforms):
+    global HEIGHT, PLATFORM_VELOCITY, score
+    
+    platform_height = 20  # Assuming the platform height is 20, adjust as per your actual platform size
+    
+    # Adjust velocity based on score
+    if score >= 10:
+        PLATFORM_VELOCITY = 120
+    if score >= 20:
+        PLATFORM_VELOCITY = 140
+    if score >= 30:
+        PLATFORM_VELOCITY = 160
+    if score >= 40:
+        PLATFORM_VELOCITY = 170
+    if score >= 50:
+        PLATFORM_VELOCITY = 180
+    if score >= 60:
+        PLATFORM_VELOCITY = 190
+    if score >= 70:
+        PLATFORM_VELOCITY = 200
+    if score >= 100:
+        PLATFORM_VELOCITY = 240
+    if score >= 200:
+        PLATFORM_VELOCITY = 300
+    
+    for platform in platforms:
+        platform_body = platform['body']
+        platform_y = platform_body.position.y
+        
+        if platform_y > HEIGHT + platform_height:
+            platform_body.position = (platform_body.position.x, -platform['size'][1])  # Reset platform above the screen
+        else:
+            platform_body.position += pymunk.Vec2d(0, PLATFORM_VELOCITY) / FPS
+            
 def draw_window(ball):
     SCREEN.fill(BACKGROUND_COLOR)
     pygame.draw.circle(SCREEN, RED, (int(ball.body.position.x), int(ball.body.position.y)), BALL_RADIUS)
     
     for platform in platforms:
-        for shape in platform['body'].shapes:
-            vertices = [(v.rotated(shape.body.angle) + shape.body.position) for v in shape.get_vertices()]
-            vertices = [(int(vertex.x), int(vertex.y)) for vertex in vertices]
-            pygame.draw.polygon(SCREEN, WHITE, vertices)
+        shape = list(platform['body'].shapes)[0]
+        vertices = [(v.rotated(shape.body.angle) + shape.body.position) for v in shape.get_vertices()]
+        vertices = [(int(vertex.x), int(vertex.y)) for vertex in vertices]
+        pygame.draw.polygon(SCREEN, WHITE, vertices)
     
     draw_score()
     pygame.display.update()
@@ -134,6 +182,7 @@ def main():
     global score
     run = True
     game_state = "start_menu"
+    
     while run:
         clock.tick(FPS)
         for event in pygame.event.get():
@@ -159,6 +208,7 @@ def main():
             handle_ball_movement(keys_pressed, ball.body)
             handle_platform_movement(platforms)
             space.step(1 / FPS)
+            
             if check_boundaries(ball):
                 game_state = "game_over"
         
